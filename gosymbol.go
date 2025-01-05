@@ -1,5 +1,7 @@
 package gosymbol
 
+const ()
+
 /* Factories */
 
 func Undefined() undefined {
@@ -11,11 +13,19 @@ func Const(val float64) constant {
 }
 
 func Var(name VarName) variable {
-	return variable{Name: name}
+	return variable{Name: name, isPattern: false}
+}
+
+func PatternVar(name VarName) variable {
+	return variable{Name: name, isPattern: true}
 }
 
 func ConstrVar(name VarName, constrFunc func(Expr) bool) constrainedVariable {
-	return constrainedVariable{Name: name, Constraint: constrFunc}
+	return constrainedVariable{Name: name, Constraint: constrFunc, isPattern: false}
+}
+
+func ConstrPatternVar(name VarName, constrFunc func(Expr) bool) constrainedVariable {
+	return constrainedVariable{Name: name, Constraint: constrFunc, isPattern: true}
 }
 
 func Neg(arg Expr) mul {
@@ -58,6 +68,16 @@ func TransformationRule(pattern Expr, transform func(Expr) Expr) transformationR
 	return transformationRule{pattern: pattern, transform: transform}
 }
 
+func (args Arguments) AddArgument(v variable, value float64) error {
+	for arg := range args {
+		if arg.Name == v.Name {
+			return &DuplicateArgumentError{}
+		}
+	}
+	args[v] = value
+	return nil
+}
+
 // Applies rule to expr and returns the transformed expression.
 // If expression does not match rule the ingoing expression
 // will just be returned.
@@ -73,8 +93,8 @@ func (rule transformationRule) match(expr Expr) bool {
 	// we execute patternFunction if it exists.
 	// If no pattern or patternFunction exists we return false
 	if rule.pattern != nil {
-		varCache := make(map[VarName]Expr)
-		return patternMatch(rule.pattern, expr, varCache)
+		bindings := make(Binding)
+		return patternMatch(expr, rule.pattern, bindings)
 	} else if rule.patternFunction != nil {
 		return rule.patternFunction(expr)
 	} else {

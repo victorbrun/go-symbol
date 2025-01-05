@@ -1,15 +1,19 @@
 package gosymbol
 
 type VarName string
-type Arguments map[VarName]float64
+type Arguments map[variable]float64
 type Func func(Arguments) float64
 
 type Expr interface {
 	// Public functions
 	String() string
 	Eval() Func
-	D(VarName) Expr
+	D(variable) Expr
 }
+
+// The Binding type is used in patternmatching.go
+// to bind pattern variables to expressions
+type Binding map[VarName]Expr
 
 // A constrainedVariable is just like the data type
 // variable but it has a constraint function. When trying
@@ -20,8 +24,11 @@ type Expr interface {
 // needs. TODO: replace this with some sort of logic DSL :)
 type constrainedVariable struct {
 	Expr
-	Name VarName
+	Name       VarName
 	Constraint func(expr Expr) bool
+
+	// Indicating if variable is part of a pattern
+	isPattern bool
 }
 
 // Used to define transformations from an expression
@@ -30,18 +37,18 @@ type constrainedVariable struct {
 // the same name as an constrained variable is considered to the same
 // variable by mathPattern.
 //
-//This structure is, for example, used in the simplifation
-// of expressions. 
+// This structure is, for example, used in the simplifation
+// of expressions.
 type transformationRule struct {
 	// One of pattern and patternFunction must be defined.
-	// pattern is prioritised, i.e. if pattern is matched 
-	// then patternFunction will be ignored. To match on 
+	// pattern is prioritised, i.e. if pattern is matched
+	// then patternFunction will be ignored. To match on
 	// patternFunciton set pattern = nil.
-	pattern Expr
+	pattern         Expr
 	patternFunction func(Expr) bool
 
 	// The mapping from pattern to whatever you define
-	transform func(Expr) Expr 
+	transform func(Expr) Expr
 }
 
 /* Basic operators */
@@ -58,6 +65,9 @@ type constant struct {
 type variable struct {
 	Expr
 	Name VarName
+
+	// Indicating if variable is part of a pattern
+	isPattern bool
 }
 
 type add struct {
@@ -72,7 +82,7 @@ type mul struct {
 
 type pow struct {
 	Expr
-	Base Expr
+	Base     Expr
 	Exponent Expr
 }
 
